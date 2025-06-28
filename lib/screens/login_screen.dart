@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
-// Import placeholder screens as they are needed for PageRouteBuilder
-import 'signup_screen.dart'; // Import your SignUpScreen
-import 'forgot_password_screen.dart'; // Import your ForgotPasswordScreen
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,7 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _passwordVisible = false;
-  bool _isLoading = false; // State for loading spinner
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -25,14 +23,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Helper function to show SnackBars
   void _showSnackBar(String message, {Color? backgroundColor}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
           backgroundColor: backgroundColor,
-          duration: const Duration(milliseconds: 1500),
+          duration: const Duration(milliseconds: 2500),
         ),
       );
     }
@@ -41,34 +38,23 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signIn() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
-        _isLoading = true; // Show spinner
+        _isLoading = true;
       });
       try {
+        // Just sign in. The AuthListenable and GoRouter redirect will handle navigation.
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+        
+        // No need to manually navigate here. The router will react to the auth state change.
 
-        // Clear input fields on successful login
-        _emailController.clear();
-        _passwordController.clear();
-
-        setState(() {
-          _isLoading = false; // Hide spinner
-        });
-
-        _showSnackBar('Login Successful!', backgroundColor: Colors.green);
-
-        // On successful login, navigate to the home screen
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/home');
-        }
       } on FirebaseAuthException catch (e) {
          String message;
         switch (e.code) {
           case 'user-not-found':
           case 'wrong-password':
-          case 'invalid-credential': // Added this case for newer Firebase Auth
+          case 'invalid-credential':
             message = 'Invalid email or password. Please try again.';
             break;
           case 'invalid-email':
@@ -78,51 +64,28 @@ class _LoginScreenState extends State<LoginScreen> {
             message = 'This account has been disabled. Please contact support.';
             break;
           default:
-            message = 'An unexpected error occurred: ${e.message}. Please try again.';
+            message = 'An unexpected error occurred. Please try again.';
             break;
         }
-        setState(() {
-          _isLoading = false; // Hide spinner on error
-        });
         _showSnackBar(message, backgroundColor: Colors.red);
-        print('Firebase Auth Error: ${e.code} - ${e.message}'); // For debugging
       } catch (e) {
-        setState(() {
-          _isLoading = false; // Hide spinner on general error
-        });
         _showSnackBar('An unexpected error occurred. Please try again.', backgroundColor: Colors.red);
-        print('General Error: $e'); // For debugging
+      } finally {
+        if(mounted){
+           setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
 
-  // Custom page transition for smoother navigation
-  PageRouteBuilder _buildPageTransition(Widget page) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0); // Start from right
-        const end = Offset.zero;      // End at original position
-        const curve = Curves.ease;   // Animation curve
-
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
-      },
-      transitionDuration: const Duration(milliseconds: 500), // Duration of the animation
-      reverseTransitionDuration: const Duration(milliseconds: 500),
-    );
-  }
-
   void _navigateToSignUp() {
-    Navigator.of(context).push(_buildPageTransition(const SignUpScreen()));
+    context.push('/signup');
   }
 
   void _navigateToForgotPassword() {
-    Navigator.of(context).push(_buildPageTransition(const ForgotPasswordScreen()));
+    context.push('/forgot-password');
   }
 
   @override
@@ -137,16 +100,13 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                // MyPath Logo
                 Image.asset(
-                  'assets/images/logo.png', // Ensure this path is correct
+                  'assets/images/logo.png',
                   height: 80,
                   width: 200,
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 32.0),
-
-                // Welcome Back text
                 const Text(
                   'Welcome Back',
                   style: TextStyle(
@@ -156,8 +116,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 8.0),
-
-                // Subtitle
                 const Text(
                   'Sign in to continue your career journey',
                   textAlign: TextAlign.center,
@@ -167,8 +125,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 32.0),
-
-                // Email Input Field
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -200,8 +156,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 20.0),
-
-                // Password Input Field
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_passwordVisible,
@@ -244,37 +198,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 12.0),
-
-                // Forgot Password Link
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: _isLoading ? null : _navigateToForgotPassword, // Disable when loading
+                    onPressed: _isLoading ? null : _navigateToForgotPassword,
                     child: const Text(
                       'Forgot Password?',
                       style: TextStyle(
-                        color: Colors.green, // MyPath green
+                        color: Colors.green,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24.0),
-
-                // Sign In Button with Loading Spinner
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _signIn, // Disable button when loading
+                    onPressed: _isLoading ? null : _signIn,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green, // MyPath green
+                      backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.0),
                       ),
-                      elevation: 5, // Add shadow for better appearance
+                      elevation: 5,
                     ),
-                    child: _isLoading // Conditionally show spinner or text
+                    child: _isLoading
                         ? const SizedBox(
                             width: 24,
                             height: 24,
@@ -294,8 +244,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24.0),
-
-                // Don't have an account? Sign up here
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
@@ -307,11 +255,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: _isLoading ? null : _navigateToSignUp, // Disable when loading
+                      onPressed: _isLoading ? null : _navigateToSignUp,
                       child: const Text(
                         'Sign up here',
                         style: TextStyle(
-                          color: Colors.green, // MyPath green
+                          color: Colors.green,
                           fontWeight: FontWeight.w600,
                           fontSize: 15.0,
                         ),

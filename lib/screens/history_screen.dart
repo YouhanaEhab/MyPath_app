@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart'; // For date formatting
-import 'package:mypath/data/role_descriptions.dart'; // To get role details
-import 'package:mypath/screens/career_report_screen.dart'; // To view full report
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'dart:async'; 
+import 'package:flutter/rendering.dart'; 
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -15,348 +16,330 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  String _currentFilter = 'All'; 
+  String? _filterQueryValue; 
+  String _currentSort = 'newest';
 
-  List<Map<String, dynamic>> _predictions = [];
-  bool _isLoading = true;
-  String _currentFilter = 'All'; // 'All', 'Career-Based', 'College-Based'
-  String _currentSort = 'newest'; // 'newest', 'oldest'
-
-  late final String _appId; // Global variable for app ID
-
-  @override
-  void initState() {
-    super.initState();
-    // Correctly initialize _appId using Dart's String.fromEnvironment
-    _appId = const String.fromEnvironment('APP_ID', defaultValue: 'default-app-id');
-    _fetchPredictions();
+  Future<void> _showDeleteConfirmationDialog(String reportId) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Confirm Deletion'),
+          content: const SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Are you sure you want to delete this report?'),
+                Text('This action cannot be undone.'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+              onPressed: () {
+                _deleteReport(reportId);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  // Function to fetch predictions from Firestore
-  void _fetchPredictions() {
+  Future<void> _deleteReport(String reportId) async {
     final User? currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      setState(() {
-        _isLoading = false;
-      });
-      print('User not logged in, cannot fetch history.');
-      // Show a snackbar or message if not logged in
-      _showSnackBar('Please log in to view your prediction history.', backgroundColor: Colors.orange);
-      return;
-    }
-
-    final String userId = currentUser.uid;
-    print('Fetching predictions for user: $userId under app ID: $_appId');
-
-    Query predictionsQuery = _firestore
-        .collection('artifacts')
-        .doc(_appId)
-        .collection('users')
-        .doc(userId)
-        .collection('predictions');
-
-    // Apply filter
-    if (_currentFilter != 'All') {
-      predictionsQuery = predictionsQuery.where('predictionType', isEqualTo: _currentFilter);
-    }
-
-    // Apply sorting (Firestore orderBy() is used here for direct sorting from DB)
-    predictionsQuery = predictionsQuery.orderBy('timestamp', descending: _currentSort == 'newest');
-
-
-    predictionsQuery.snapshots().listen((snapshot) {
-      if (mounted) { // Ensure widget is still mounted before calling setState
-        final fetchedPredictions = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          data['id'] = doc.id; // Add document ID for potential future use (e.g., deleting feedback)
-          return data;
-        }).toList();
-
-        setState(() {
-          _predictions = fetchedPredictions;
-          _isLoading = false;
-        });
-        print('Fetched ${_predictions.length} predictions.');
+    if (currentUser == null) return;
+    try {
+      await _firestore.collection('users').doc(currentUser.uid).collection('reports').doc(reportId).delete();
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report deleted successfully.'), backgroundColor: Colors.green),
+        );
       }
-    }, onError: (error, stackTrace) {
-      if (mounted) { // Ensure widget is still mounted before calling setState
-        setState(() {
-          _isLoading = false;
-        });
-        print('Error fetching predictions: $error');
-        print('STACK TRACE: $stackTrace');
-        _showSnackBar('Error loading prediction history. Please check console.', backgroundColor: Colors.red);
-      }
-    });
+    } catch (e) {
+       if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete report: $e'), backgroundColor: Colors.red),
+        );
+       }
+    }
+  }
+  
+  void _showFilterOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(leading: const Icon(Icons.select_all), title: const Text('All'), onTap: () => _applyFilter('All', null)),
+              ListTile(leading: const Icon(Icons.psychology_outlined), title: const Text('Career - Personality'), onTap: () => _applyFilter('Personality', 'Personality-Based')),
+              ListTile(leading: const Icon(Icons.track_changes_outlined), title: const Text('Career - Skills'), onTap: () => _applyFilter('Skills', 'Skills-Based')),
+              ListTile(leading: const Icon(Icons.school_outlined), title: const Text('College'), onTap: () => _applyFilter('College', 'College-Based')),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  // Function to show SnackBar
-  void _showSnackBar(String message, {Color? backgroundColor}) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: backgroundColor,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
+  void _applyFilter(String filterName, String? queryValue) {
+    setState(() {
+      _currentFilter = filterName;
+      _filterQueryValue = queryValue;
+    });
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final User? currentUser = _auth.currentUser;
+    Query query = _firestore.collection('users').doc(currentUser?.uid ?? 'null_user').collection('reports');
+
+    if (_filterQueryValue != null) {
+      query = query.where('predictionType', isEqualTo: _filterQueryValue);
+    }
+    query = query.orderBy('timestamp', descending: _currentSort == 'newest');
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header with Logo
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-              child: Image.asset(
-                'assets/images/logo.png', // MyPath Logo
-                height: 40,
-                width: 120,
-                fit: BoxFit.contain,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    const Text('Prediction History', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Colors.black87), textAlign: TextAlign.center),
+                    const SizedBox(height: 8.0),
+                    const Text('View your past predictions and reports', style: TextStyle(fontSize: 16.0, color: Colors.grey), textAlign: TextAlign.center),
+                  ],
+                ),
               ),
             ),
-            const Text(
-              'Prediction History',
-              style: TextStyle(
-                fontSize: 24.0,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            SliverPersistentHeader(
+              delegate: _SliverFilterHeaderDelegate(
+                onSortPressed: () => setState(() => _currentSort = _currentSort == 'newest' ? 'oldest' : 'newest'),
+                onFilterPressed: _showFilterOptions,
+                currentSort: _currentSort,
+                currentFilter: _currentFilter,
               ),
-              textAlign: TextAlign.center,
+              pinned: true,
+              floating: true, 
             ),
-            const SizedBox(height: 8.0),
-            const Text(
-              'View your past predictions and reports',
-              style: TextStyle(
-                fontSize: 16.0,
-                color: Colors.grey,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24.0),
-
-            // Sort and Filter Buttons
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _currentSort = _currentSort == 'newest' ? 'oldest' : 'newest';
-                          _isLoading = true; // Show loading while re-fetching
-                        });
-                        _fetchPredictions();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        side: BorderSide(color: Colors.grey.shade400, width: 1.0),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            StreamBuilder<QuerySnapshot>(
+              stream: currentUser != null ? query.snapshots() : null,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: Colors.green)));
+                }
+                if (snapshot.hasError) {
+                  return SliverFillRemaining(child: Center(child: Text("Error: ${snapshot.error}")));
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return SliverFillRemaining(
+                    child: Center(
+                      child: Text(
+                        _filterQueryValue != null
+                            ? 'No reports match your filter.\nTry selecting a different option!'
+                            : 'Your prediction history is empty.\nComplete an assessment to get started!',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16.0, color: Colors.grey),
                       ),
-                      icon: Icon(_currentSort == 'newest' ? Icons.arrow_downward : Icons.arrow_upward, color: Colors.grey),
-                      label: Text('Sort: ${_currentSort == 'newest' ? 'Newest' : 'Oldest'}', style: const TextStyle(color: Colors.grey)),
+                    ),
+                  );
+                }
+                
+                final reports = snapshot.data!.docs;
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final report = reports[index].data() as Map<String, dynamic>;
+                        report['id'] = reports[index].id; 
+                        return _buildReportCard(report);
+                      },
+                      childCount: reports.length,
                     ),
                   ),
-                  const SizedBox(width: 16.0),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        // Show filter options
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (BuildContext bc) {
-                            return SafeArea(
-                              child: Wrap(
-                                children: <Widget>[
-                                  ListTile(
-                                    leading: const Icon(Icons.select_all),
-                                    title: const Text('All Predictions'),
-                                    onTap: () {
-                                      setState(() {
-                                        _currentFilter = 'All';
-                                        _isLoading = true;
-                                      });
-                                      _fetchPredictions();
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(Icons.work_outline),
-                                    title: const Text('Career Prediction'),
-                                    onTap: () {
-                                      setState(() {
-                                        _currentFilter = 'Career-Based';
-                                        _isLoading = true;
-                                      });
-                                      _fetchPredictions();
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(Icons.school_outlined),
-                                    title: const Text('College Prediction'),
-                                    onTap: () {
-                                      setState(() {
-                                        _currentFilter = 'College-Based';
-                                        _isLoading = true;
-                                      });
-                                      _fetchPredictions();
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        side: BorderSide(color: Colors.grey.shade400, width: 1.0),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                      ),
-                      icon: const Icon(Icons.filter_list, color: Colors.grey),
-                      label: Text('Filter: ${_currentFilter == 'Career-Based' ? 'Career' : (_currentFilter == 'College-Based' ? 'College' : 'All')}', style: const TextStyle(color: Colors.grey)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24.0),
-
-            // Loading Indicator or Prediction List
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Colors.green))
-                  : _predictions.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No predictions yet.\nComplete an assessment to see your history!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16.0, color: Colors.grey),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                          itemCount: _predictions.length,
-                          itemBuilder: (context, index) {
-                            final prediction = _predictions[index];
-                            final String predictedRole = prediction['predictedRole'] ?? 'Unknown Role';
-                            final String predictionType = prediction['predictionType'] ?? 'N/A';
-                            final Timestamp? timestamp = prediction['timestamp'] as Timestamp?;
-                            final String formattedDate = timestamp != null
-                                ? DateFormat('MMM dd, yyyy').format(timestamp.toDate())
-                                : 'N/A';
-
-                            // You can add a 'feedbackGiven' field to your Firestore document
-                            // For now, let's assume no feedback is given unless implemented
-                            final bool hasFeedback = prediction['feedbackGiven'] ?? false; // Get feedback status from Firestore
-
-                            // Determine icon based on prediction type
-                            IconData cardIcon = Icons.work_outline; // Default career icon
-                            if (predictionType == 'College-Based') {
-                              cardIcon = Icons.school_outlined;
-                            } else if (predictionType == 'Personality-Based' || predictionType == 'Skills-Based') {
-                              cardIcon = Icons.work_outline;
-                            }
-
-
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 16.0),
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                              ),
-                              child: InkWell(
-                                onTap: () {
-                                  // Navigate to the full report screen
-                                  Navigator.of(context).pushNamed(
-                                    '/career_report',
-                                    arguments: predictedRole, // Pass the predicted role to the report screen
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(12.0),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(cardIcon, color: Colors.green.shade700),
-                                          const SizedBox(width: 8.0),
-                                          Text(
-                                            '${predictionType.replaceAll('-', ' ')}', // Format type for display
-                                            style: const TextStyle(
-                                                fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.black87),
-                                          ),
-                                          const Spacer(),
-                                          if (hasFeedback)
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.check_circle, size: 18, color: Colors.green),
-                                                const SizedBox(width: 4),
-                                                Text('Feedback', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
-                                              ],
-                                            )
-                                          else
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.cancel_outlined, size: 18, color: Colors.grey),
-                                                const SizedBox(width: 4),
-                                                Text('No Feedback', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                              ],
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8.0),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey),
-                                          const SizedBox(width: 8.0),
-                                          Text(formattedDate, style: const TextStyle(fontSize: 14.0, color: Colors.grey)),
-                                          const SizedBox(width: 16.0),
-                                          const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-                                          const SizedBox(width: 8.0),
-                                          // Placeholder for user type (Personality-Based, Skills-Based)
-                                          Text(predictionType, style: const TextStyle(fontSize: 14.0, color: Colors.grey)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12.0),
-                                      Text(
-                                        'Result: $predictedRole',
-                                        style: const TextStyle(
-                                            fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.green),
-                                      ),
-                                      const SizedBox(height: 8.0),
-                                      Align(
-                                        alignment: Alignment.bottomRight,
-                                        child: Text(
-                                          'Tap to view',
-                                          style: TextStyle(
-                                            fontSize: 12.0,
-                                            color: Colors.green.shade700,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                );
+              },
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildReportCard(Map<String, dynamic> report) {
+    final String reportId = report['id'];
+    final String predictedRole = report['predictedRole'] ?? 'Unknown Role';
+    final String predictionType = report['predictionType'] ?? 'N/A';
+    final Timestamp? timestamp = report['timestamp'] as Timestamp?;
+    // --- UPDATED DATE FORMAT ---
+    final String formattedDate = timestamp != null 
+        ? DateFormat('MMM dd, yyyy  h:mm a').format(timestamp.toDate()) 
+        : 'N/A';
+    final bool hasFeedback = report['feedbackGiven'] ?? false;
+    
+    final bool isCollegePrediction = predictionType == 'College-Based';
+    final IconData titleIcon = isCollegePrediction ? Icons.school_outlined : Icons.work_outline;
+    final String titleText = isCollegePrediction ? 'College Prediction' : 'Career Prediction';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.green.shade200, width: 1.5),
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      child: InkWell(
+        onTap: () {
+          if (isCollegePrediction) {
+            context.push('/college-faculty-report/$reportId/${Uri.encodeComponent(predictedRole)}');
+          } else {
+            context.push('/career-report/$reportId/${Uri.encodeComponent(predictedRole)}');
+          }
+        },
+        borderRadius: BorderRadius.circular(12.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(titleIcon, color: Colors.green.shade700),
+                  const SizedBox(width: 8.0),
+                  Expanded(
+                    child: Text(titleText, style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  ),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    onPressed: () => _showDeleteConfirmationDialog(reportId),
+                    tooltip: 'Delete Report',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12.0),
+              
+              // --- UPDATED LAYOUT FOR DETAILS ---
+              // Changed from a Row to a Column
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey),
+                      const SizedBox(width: 8.0),
+                      Text(formattedDate, style: const TextStyle(fontSize: 14.0, color: Colors.grey)),
+                    ],
+                  ),
+                  if (!isCollegePrediction) ...[
+                    const SizedBox(height: 8.0), // Add spacing between the stacked items
+                    Row(
+                      children: [
+                        const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                        const SizedBox(width: 8.0),
+                        Text(predictionType, style: const TextStyle(fontSize: 14.0, color: Colors.grey)),
+                      ],
+                    ),
+                  ]
+                ],
+              ),
+              const SizedBox(height: 12.0),
+              
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text('Result: $predictedRole', style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.green)),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (hasFeedback)
+                        const Row(children: [Icon(Icons.check_circle, size: 18, color: Colors.green), SizedBox(width: 4), Text('Feedback', style: TextStyle(fontSize: 12, color: Colors.green))])
+                      else
+                        const Row(children: [Icon(Icons.cancel_outlined, size: 18, color: Colors.grey), SizedBox(width: 4), Text('No Feedback', style: TextStyle(fontSize: 12, color: Colors.grey))]),
+                      const SizedBox(height: 4.0),
+                      const Text('Tap to view', style: TextStyle(fontSize: 12.0, color: Colors.green, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SliverFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final VoidCallback onSortPressed;
+  final VoidCallback onFilterPressed;
+  final String currentSort;
+  final String currentFilter;
+
+  _SliverFilterHeaderDelegate({
+    required this.onSortPressed,
+    required this.onFilterPressed,
+    required this.currentSort,
+    required this.currentFilter,
+  });
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: onSortPressed,
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12.0), side: BorderSide(color: Colors.grey.shade400), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0))),
+              icon: Icon(currentSort == 'newest' ? Icons.arrow_downward : Icons.arrow_upward, color: Colors.grey),
+              label: Text('Sort: ${currentSort == 'newest' ? 'Newest' : 'Oldest'}', style: const TextStyle(color: Colors.grey)),
+            ),
+          ),
+          const SizedBox(width: 16.0),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: onFilterPressed,
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12.0), side: BorderSide(color: Colors.grey.shade400), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0))),
+              icon: const Icon(Icons.filter_list, color: Colors.grey),
+              label: Text('Filter: $currentFilter', style: const TextStyle(color: Colors.grey, overflow: TextOverflow.ellipsis)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  double get maxExtent => 60.0;
+
+  @override
+  double get minExtent => 60.0;
+
+  @override
+  bool shouldRebuild(covariant _SliverFilterHeaderDelegate oldDelegate) {
+    return oldDelegate.currentSort != currentSort || oldDelegate.currentFilter != currentFilter;
   }
 }

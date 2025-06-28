@@ -1,176 +1,110 @@
 import 'package:flutter/material.dart';
-import 'package:mypath/screens/career_prediction_method_screen.dart'; // Still needed for navigation
+import 'package:go_router/go_router.dart';
 
-// Renamed to PredictionTypeScreenContent as it's now just the content
 class PredictionTypeScreenContent extends StatelessWidget {
-  const PredictionTypeScreenContent({super.key}); // Changed class name
+  const PredictionTypeScreenContent({super.key});
 
   void _onCareerPredictionTapped(BuildContext context) {
-    // Navigate to the new CareerPredictionMethodScreen by pushing onto the ROOT navigator
-    // This will make it a full-screen overlay, covering the BottomNavigationBar.
-    Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const CareerPredictionMethodScreenContent(), // Navigating to content widget
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.ease;
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-        reverseTransitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
-    print('Career Prediction box tapped!');
+    context.push('/career-prediction-method');
   }
 
   void _onCollegeFacultyPredictionTapped(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('College Faculty Prediction selected!')),
-    );
-    print('College Faculty Prediction box tapped!');
-    // Example: Navigator.of(context).pushNamed('/college_faculty_prediction_details', rootNavigator: true);
+    context.push('/college-faculty-assessment');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Text(
-            'What would you like to predict?',
-            style: TextStyle(
-              fontSize: 24.0,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+    // --- UPDATED: Wrapped with PopScope ---
+    return PopScope(
+      canPop: false, // We will handle the pop action manually
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        // When back is pressed, go to the main welcome screen
+        context.go('/main');
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'What would you like to predict?',
+              style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold),
             ),
-          ),
-          const SizedBox(height: 8.0),
-          const Text(
-            'Choose the type of prediction you\'re interested in',
-            style: TextStyle(
-              fontSize: 16.0,
-              color: Colors.grey,
+            const SizedBox(height: 8.0),
+            const Text(
+              'Choose the type of prediction you\'re interested in',
+              style: TextStyle(fontSize: 16.0, color: Colors.grey),
             ),
-          ),
-          const SizedBox(height: 32.0),
-
-          Expanded(
-            child: ListView(
-              physics: const NeverScrollableScrollPhysics(), // Restored physics
-              children: [
-                // Career Prediction Box
-                InkWell(
-                  onTap: () => _onCareerPredictionTapped(context),
-                  borderRadius: BorderRadius.circular(16.0),
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16.0),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade100,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.work_outline, // Bag icon
-                              size: 40,
-                              color: Colors.green.shade700,
-                            ),
-                          ),
-                          const SizedBox(height: 16.0),
-                          const Text(
-                            'Career Prediction',
-                            style: TextStyle(
-                              fontSize: 18.0,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8.0),
-                          const Text(
-                            'Discover your ideal career path based on your personality and skills',
-                            style: TextStyle(
-                              fontSize: 14.0,
-                              color: Colors.grey,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
+            const SizedBox(height: 32.0),
+            Expanded(
+              child: ListView(
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildPredictionCard(
+                    context: context,
+                    title: 'Career Prediction',
+                    subtitle: 'Discover your ideal career path based on your personality and skills',
+                    icon: Icons.work_outline,
+                    onTap: () => _onCareerPredictionTapped(context),
                   ),
-                ),
-                const SizedBox(height: 20.0), // Spacing between cards
-
-                // College Faculty Prediction Box
-                InkWell(
-                  onTap: () => _onCollegeFacultyPredictionTapped(context),
-                  borderRadius: BorderRadius.circular(16.0),
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16.0),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade100,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.school_outlined, // Graduation cap icon
-                              size: 40,
-                              color: Colors.green.shade700,
-                            ),
-                          ),
-                          const SizedBox(height: 16.0),
-                          const Text(
-                            'College Faculty Prediction',
-                            style: TextStyle(
-                              fontSize: 18.0,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8.0),
-                          const Text(
-                            'Find the best faculty or major that matches your interests',
-                            style: TextStyle(
-                              fontSize: 14.0,
-                              color: Colors.grey,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
+                  const SizedBox(height: 20.0),
+                  _buildPredictionCard(
+                    context: context,
+                    title: 'College Faculty Prediction',
+                    subtitle: 'Find the best faculty or major that matches your interests',
+                    icon: Icons.school_outlined,
+                    onTap: () => _onCollegeFacultyPredictionTapped(context),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPredictionCard({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16.0),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 40, color: Colors.green.shade700),
+              ),
+              const SizedBox(height: 16.0),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.black87),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8.0),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 14.0, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          // Added SizedBox for bottom spacing, which works with NeverScrollableScrollPhysics
-          SizedBox(height: MediaQuery.of(context).padding.bottom + kBottomNavigationBarHeight + 20.0),
-        ],
+        ),
       ),
     );
   }

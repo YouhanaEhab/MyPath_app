@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -19,7 +20,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  // Helper function to show SnackBars
   void _showSnackBar(String message, {Color? backgroundColor}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -43,26 +43,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           email: _emailController.text.trim(),
         );
 
-        _emailController.clear(); // Clear the input field after sending
-
-        setState(() {
-          _isLoading = false;
-        });
-
         _showSnackBar(
           'If this email is registered, a password reset link has been sent. Please check your inbox.',
           backgroundColor: Colors.green,
         );
 
-        // Optionally navigate back to login after showing success message
         if (mounted) {
-          Navigator.of(context).pop();
+          context.pop();
         }
       } on FirebaseAuthException catch (e) {
         String message;
         switch (e.code) {
           case 'user-not-found':
-            message = 'No user found for that email. Please check the email address.';
+            // For security, don't reveal if an email exists or not.
+             message = 'If this email is registered, a password reset link has been sent.';
             break;
           case 'invalid-email':
             message = 'The email address is not valid. Please check and try again.';
@@ -74,23 +68,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         setState(() {
           _isLoading = false;
         });
-        _showSnackBar(message, backgroundColor: Colors.red);
-        print('Firebase Auth Error: ${e.code} - ${e.message}'); // For debugging
+        _showSnackBar(message, backgroundColor: e.code == 'user-not-found' ? Colors.green : Colors.red);
       } catch (e) {
         setState(() {
           _isLoading = false;
         });
         _showSnackBar('An unexpected error occurred. Please try again.', backgroundColor: Colors.red);
-        print('General Error: $e'); // For debugging
       }
     }
   }
-
- /* void _navigateToSignIn() {
-    // This will pop the current screen and go back to the previous route (LoginScreen)
-    // or navigate directly if the route stack needs it.
-    Navigator.of(context).pop(); // Pops the current ForgotPasswordScreen
-  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +88,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
-            Navigator.of(context).pop();
+            context.pop();
           },
         ),
         title: const Text(
@@ -112,7 +98,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        centerTitle: false, // Align title to the left
+        centerTitle: false,
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -122,16 +108,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                // MyPath Logo
                 Image.asset(
-                  'assets/images/logo.png', // Ensure this path is correct
+                  'assets/images/logo.png',
                   height: 100,
                   width: 200,
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 32.0),
-
-                // Forgot Password? text
                 const Text(
                   'Forgot Password?',
                   style: TextStyle(
@@ -141,8 +124,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                 ),
                 const SizedBox(height: 8.0),
-
-                // Subtitle
                 const Text(
                   "No worries! Enter your email address and we'll send you a link to reset your password.",
                   textAlign: TextAlign.center,
@@ -152,8 +133,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                 ),
                 const SizedBox(height: 32.0),
-
-                // Email Address Input Field
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -185,14 +164,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   },
                 ),
                 const SizedBox(height: 24.0),
-
-                // Send Reset Link Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _sendPasswordResetEmail,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green, // MyPath green
+                      backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.0),
@@ -218,32 +195,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                   ),
                 ),
-                const SizedBox(height: 24.0),
-
-                // Remember your password? Sign in here
-                /*Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    const Text(
-                      "Remember your password?",
-                      style: TextStyle(
-                        fontSize: 15.0,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: _isLoading ? null : _navigateToSignIn,
-                      child: const Text(
-                        'Sign in here',
-                        style: TextStyle(
-                          color: Colors.green, // MyPath green
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15.0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),*/
               ],
             ),
           ),
