@@ -21,43 +21,31 @@ class AdminFeedbackDetailScreen extends StatelessWidget {
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance.collection('feedback').doc(feedbackId).get(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, feedbackSnapshot) {
+          if (feedbackSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || !snapshot.data!.exists) {
+          if (!feedbackSnapshot.hasData || !feedbackSnapshot.data!.exists) {
             return const Center(child: Text('Feedback not found.'));
           }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+          if (feedbackSnapshot.hasError) {
+            return Center(child: Text('Error: ${feedbackSnapshot.error}'));
           }
 
-          final feedback = snapshot.data!.data() as Map<String, dynamic>;
+          final feedback = feedbackSnapshot.data!.data() as Map<String, dynamic>;
           final reportId = feedback['reportId'] as String?;
           final userId = feedback['userId'] as String?;
 
           return ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
-              _buildDetailCard('User Information', [
-                _buildDetailRow('Email:', feedback['userEmail'] ?? 'N/A'),
-                _buildDetailRow('Submitted:', _formatTimestamp(feedback['timestamp'])),
-              ]),
-              _buildDetailCard('User\'s Feedback', [
-                RatingBarIndicator(
-                  rating: (feedback['rating'] as num?)?.toDouble() ?? 0.0,
-                  itemBuilder: (context, index) => const Icon(Icons.star, color: Colors.amber),
-                  itemCount: 5,
-                  itemSize: 24.0,
-                ),
-                const SizedBox(height: 16),
-                Text(feedback['feedbackText'] ?? 'No text provided.', style: const TextStyle(fontSize: 16, height: 1.5)),
-              ]),
+              // --- UPDATED: This card now fetches and displays user's full name ---
+              _buildUserInfoCard(feedback),
+              _buildFeedbackContentCard(feedback),
               if (reportId != null && userId != null)
                 _buildReportDetails(reportId, userId),
-              if (feedback['feedbackType'] == 'general')
+              if (feedback['feedbackType'] == null) // Show for general feedback
                  _buildDetailCard('Feedback Type', [_buildDetailRow('Type:', 'General App Feedback')]),
-
             ],
           );
         },
@@ -65,12 +53,54 @@ class AdminFeedbackDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildUserInfoCard(Map<String, dynamic> feedback) {
+    final userId = feedback['userId'] as String?;
+    if (userId == null) {
+      return _buildDetailCard('User Information', [
+        _buildDetailRow('Name:', 'Unknown User'),
+        _buildDetailRow('Email:', feedback['userEmail'] ?? 'N/A'),
+      ]);
+    }
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
+      builder: (context, userSnapshot) {
+        String fullName = 'Loading...';
+        if (userSnapshot.hasData && userSnapshot.data!.exists) {
+          final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+          fullName = '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
+        } else if (userSnapshot.hasError || !userSnapshot.hasData) {
+          fullName = 'User Not Found';
+        }
+
+        return _buildDetailCard('User Information', [
+          _buildDetailRow('Name:', fullName),
+          _buildDetailRow('Email:', feedback['userEmail'] ?? 'N/A'),
+          _buildDetailRow('Submitted:', _formatTimestamp(feedback['timestamp'])),
+        ]);
+      },
+    );
+  }
+
+  Widget _buildFeedbackContentCard(Map<String, dynamic> feedback) {
+    return _buildDetailCard('User\'s Feedback', [
+      RatingBarIndicator(
+        rating: (feedback['rating'] as num?)?.toDouble() ?? 0.0,
+        itemBuilder: (context, index) => const Icon(Icons.star, color: Colors.amber),
+        itemCount: 5,
+        itemSize: 24.0,
+      ),
+      const SizedBox(height: 16),
+      Text(feedback['feedbackText'] ?? 'No text provided.', style: const TextStyle(fontSize: 16, height: 1.5)),
+    ]);
+  }
+
   Widget _buildReportDetails(String reportId, String userId) {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('users').doc(userId).collection('reports').doc(reportId).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildDetailCard('Associated Report', [const Center(child: CircularProgressIndicator())]);
         }
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return _buildDetailCard('Associated Report', [_buildDetailRow('Status:', 'Report not found or has been deleted by the user.')]);
@@ -118,7 +148,7 @@ class AdminFeedbackDetailScreen extends StatelessWidget {
   }
 
   String _formatQuestion(String key) {
-    return key.replaceAll('_', ' ').split(' ').map((word) => word[0].toUpperCase() + word.substring(1)).join(' ');
+    return key.replaceAll('_', ' ').split(' ').map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '').join(' ');
   }
 
   Widget _buildDetailCard(String title, List<Widget> children) {

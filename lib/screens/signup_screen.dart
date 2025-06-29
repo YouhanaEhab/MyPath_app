@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -67,6 +68,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (value == null || value.isEmpty) {
       return 'Please enter your first name.';
     }
+    if (value.length > 50) {
+      return 'First name cannot exceed 50 characters.';
+    }
     return null;
   }
 
@@ -74,12 +78,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (value == null || value.isEmpty) {
       return 'Please enter your last name.';
     }
+    if (value.length > 50) {
+      return 'Last name cannot exceed 50 characters.';
+    }
     return null;
   }
 
   String? _validateUsernameContent(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please choose a username.';
+    }
+    if (value.length < 3) {
+      return 'Username must be at least 3 characters.';
+    }
+    if (value.length > 30) {
+      return 'Username cannot exceed 30 characters.';
     }
     return null;
   }
@@ -90,6 +103,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
     if (value.length < 8) {
       return 'Password must be at least 8 characters long.';
+    }
+     if (value.length > 64) {
+      return 'Password cannot exceed 64 characters.';
     }
     if (!value.contains(RegExp(r'[A-Z]'))) {
       return 'Password must contain at least one capital letter.';
@@ -115,11 +131,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
     return null;
   }
+  
+  Future<bool> _isUsernameAvailable(String username) async {
+    final result = await FirebaseFirestore.instance
+      .collection('users')
+      .where('username', isEqualTo: username)
+      .limit(1)
+      .get();
+    return result.docs.isEmpty;
+  }
+
 
   Future<void> _signUp() async {
     setState(() {
-      _isLoading = true;
-
       _emailError = _validateEmailContent(_emailController.text);
       _firstNameError = _validateFirstNameContent(_firstNameController.text);
       _lastNameError = _validateLastNameContent(_lastNameController.text);
@@ -134,27 +158,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _usernameError != null ||
         _passwordInputError != null ||
         _confirmPasswordInputError != null) {
-      setState(() {
-        _isLoading = false;
-      });
       _showSnackBar('Please correct the errors in the form.', backgroundColor: Colors.red);
       return;
     }
 
+    setState(() => _isLoading = true);
+
     try {
-      // Create user with Firebase Auth
+      final isAvailable = await _isUsernameAvailable(_usernameController.text.trim());
+      if (!isAvailable) {
+        _showSnackBar('This username is already taken. Please choose another.', backgroundColor: Colors.red);
+        setState(() => _isLoading = false);
+        return;
+      }
+      
+      // Step 1: Create user. They are now logged in.
       UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      await FirebaseAuth.instance.signOut();
-      // --- Updated Firestore Path ---
+
       final String userId = userCredential.user!.uid;
-      
-      // Correct path for saving user profile data according to new rules
       final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
-      
-      // Set user details in the correct document
+
+      // Step 2: Write user data to Firestore WHILE they are logged in.
       await userDocRef.set({
         'uid': userId,
         'email': _emailController.text.trim(),
@@ -164,13 +191,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Sign the user out immediately to force them to log in.
-      
+      // Step 3: Now, sign the user out to force them to log in.
+      await FirebaseAuth.instance.signOut();
       
       _showSnackBar('Account created successfully! Please sign in.', backgroundColor: Colors.green);
 
       if (mounted) {
-        // Pop the signup screen to return to the login screen.
         context.pop();
       }
 
@@ -181,7 +207,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           message = 'This email address is already in use by another account.';
           break;
         case 'weak-password':
-          message = 'The password provided is too weak. Please choose a stronger password.';
+          message = 'The password provided is too weak.';
           break;
         case 'invalid-email':
           message = 'The email address is not valid.';
@@ -192,12 +218,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
       _showSnackBar(message, backgroundColor: Colors.red);
     } catch (e) {
-      _showSnackBar('An unexpected error occurred while creating your account. Please try again. Error: $e', backgroundColor: Colors.red);
+      _showSnackBar('An unexpected error occurred: $e', backgroundColor: Colors.red);
     } finally {
         if(mounted){
-           setState(() {
-            _isLoading = false;
-          });
+           setState(() => _isLoading = false);
         }
     }
   }
@@ -275,6 +299,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 20.0),
                 TextFormField(
                   controller: _firstNameController,
+                  maxLength: 50,
+                  inputFormatters: [LengthLimitingTextInputFormatter(50)],
                   decoration: InputDecoration(
                     labelText: 'First Name',
                     hintText: 'Enter your first name',
@@ -284,6 +310,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
                     contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                     errorText: _firstNameError,
+                    counterText: "",
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -294,6 +321,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 20.0),
                 TextFormField(
                   controller: _lastNameController,
+                   maxLength: 50,
+                   inputFormatters: [LengthLimitingTextInputFormatter(50)],
                   decoration: InputDecoration(
                     labelText: 'Last Name',
                     hintText: 'Enter your last name',
@@ -303,6 +332,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
                     contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                     errorText: _lastNameError,
+                    counterText: "",
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -313,6 +343,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 20.0),
                 TextFormField(
                   controller: _usernameController,
+                   maxLength: 30,
+                   inputFormatters: [LengthLimitingTextInputFormatter(30)],
                   decoration: InputDecoration(
                     labelText: 'Username',
                     hintText: 'Choose a username',
@@ -322,6 +354,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     prefixIcon: const Icon(Icons.alternate_email, color: Colors.grey),
                     contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                     errorText: _usernameError,
+                    counterText: "",
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -333,6 +366,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_passwordVisible,
+                   maxLength: 64,
+                   inputFormatters: [LengthLimitingTextInputFormatter(64)],
                   decoration: InputDecoration(
                     labelText: 'Password',
                     hintText: 'Create a password',
@@ -353,6 +388,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                     errorText: _passwordInputError,
+                    counterText: "",
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -365,6 +401,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: !_confirmPasswordVisible,
+                   maxLength: 64,
+                   inputFormatters: [LengthLimitingTextInputFormatter(64)],
                   decoration: InputDecoration(
                     labelText: 'Confirm Password',
                     hintText: 'Confirm your password',
@@ -385,6 +423,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                     errorText: _confirmPasswordInputError,
+                    counterText: "",
                   ),
                   onChanged: (value) {
                     setState(() {

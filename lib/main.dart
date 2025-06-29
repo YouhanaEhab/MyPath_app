@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mypath/app_wrapper.dart'; // Import the new wrapper
 import 'package:mypath/router.dart';
 import 'firebase_options.dart';
 
@@ -10,12 +11,16 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Enable Firestore offline persistence
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
   );
 
-  runApp(const MyApp());
+  runApp(
+    // Wrap your app with the new AppWrapper
+    AppWrapper(
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

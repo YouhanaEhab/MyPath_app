@@ -50,7 +50,7 @@ class _MainWrapperState extends State<MainWrapper> {
          if (mounted) setState(() => _isAdmin = false);
       }
     } catch (e) {
-      print("Error checking admin status: $e");
+     
       if (mounted) setState(() => _isAdmin = false);
     } finally {
       if(mounted) setState(() => _isCheckingAdminStatus = false);
@@ -106,16 +106,19 @@ class _MainWrapperState extends State<MainWrapper> {
                 onPressed: () => context.go('/main'),
               )
             : null,
-          title: Image.asset('assets/images/logo.png', height: 35),
+          title: GestureDetector(
+            onTap: () => context.go('/main'),
+            child:  Image.asset('assets/images/logo.png', height: 90)),
           centerTitle: true,
-          actions: [
+       
+          /*actions: [
             IconButton(
               icon: const Icon(Icons.logout, color: Colors.black54),
               onPressed: () async {
                 await FirebaseAuth.instance.signOut();
               },
             ),
-          ],
+          ],*/
         ),
         body: _isCheckingAdminStatus 
             ? const Center(child: CircularProgressIndicator()) 

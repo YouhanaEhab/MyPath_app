@@ -28,8 +28,8 @@ class CareerPredictionMethodScreenContent extends StatelessWidget {
         title: Center(
           child: Image.asset(
             'assets/images/logo.png',
-            height: 40,
-            width: 120,
+            height: 90,
+            //width: 90,
             fit: BoxFit.contain,
           ),
         ),

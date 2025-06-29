@@ -12,12 +12,13 @@ import 'package:mypath/screens/skills_assessment_quiz_screen.dart';
 import 'package:mypath/screens/personality_assessment_screen.dart';
 import 'package:mypath/screens/career_report_screen.dart';
 import 'package:mypath/screens/history_screen.dart';
-import 'package:mypath/screens/profile_screen.dart'; // Import the new profile screen
+import 'package:mypath/screens/profile_screen.dart';
 import 'package:mypath/screens/feedback_screen.dart'; 
 import 'package:mypath/screens/admin_feedback_screen.dart'; 
 import 'package:mypath/screens/admin_feedback_detail_screen.dart';
 import 'package:mypath/screens/college_faculty_assessment_screen.dart'; 
 import 'package:mypath/screens/college_faculty_report_screen.dart'; 
+import 'package:mypath/screens/splash_screen.dart'; // Import new screen
 import 'package:mypath/auth_listenable.dart';
 
 class FadeTransitionPage<T> extends Page<T> {
@@ -50,7 +51,7 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter router = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/login',
+  initialLocation: '/', // --- UPDATED: Start at the splash screen ---
   refreshListenable: AuthListenable(),
   redirect: (BuildContext context, GoRouterState state) {
     final bool loggedIn = FirebaseAuth.instance.currentUser != null;
@@ -58,6 +59,11 @@ final GoRouter router = GoRouter(
         state.matchedLocation == '/signup' ||
         state.matchedLocation == '/forgot-password';
     
+    // Allow the splash screen to show
+    if (state.matchedLocation == '/') {
+        return null;
+    }
+
     if (!loggedIn) {
       return isAtAuthPage ? null : '/login';
     }
@@ -68,6 +74,11 @@ final GoRouter router = GoRouter(
     return null;
   },
   routes: [
+    // --- NEW: Route for the splash screen ---
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const SplashScreen(),
+    ),
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
@@ -104,7 +115,7 @@ final GoRouter router = GoRouter(
              GoRoute(
               path: '/profile',
               builder: (BuildContext context, GoRouterState state) =>
-                  const ProfileScreen(), // --- UPDATED ---
+                  const ProfileScreen(),
             ),
           ],
         ),

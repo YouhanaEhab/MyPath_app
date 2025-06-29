@@ -51,37 +51,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         _latestPrediction = reportSnapshot.docs.first.data();
         _latestPrediction!['id'] = reportSnapshot.docs.first.id;
       }
-    } catch (e) {
-      print("Error fetching user data for welcome screen: $e");
-    } finally {
+    }
+     finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
   }
 
-  // --- NEW: Function to show the exit confirmation dialog ---
- /* Future<bool> _showExitConfirmationDialog() async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Exit App?'),
-        content: const Text('Are you sure you want to close the program?'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Return false
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true), // Return true
-            child: const Text('Yes, Exit'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-          ),
-        ],
-      ),
-    ) ?? false; // Return false if dialog is dismissed
-  }*/
-    Future<bool> _showExitConfirmationDialog() async {
+  Future<bool> _showExitConfirmationDialog() async {
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -121,33 +99,25 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // --- WRAPPED WITH PopScope ---
     return PopScope(
-      canPop: false, // We handle the pop logic manually
+      canPop: false, 
       onPopInvoked: (bool didPop) async {
         if (didPop) return;
 
         final bool shouldExit = await _showExitConfirmationDialog();
         if (shouldExit) {
-          SystemNavigator.pop(); // Close the app
+          SystemNavigator.pop(); 
         }
       },
       child: Scaffold(
         backgroundColor: Colors.grey[100],
         appBar: AppBar(
-          title: Image.asset('assets/images/logo.png', height: 35),
+          title: Image.asset('assets/images/logo.png', height: 90),
           centerTitle: true,
           backgroundColor: Colors.white,
           elevation: 1,
-          automaticallyImplyLeading: false, // No back button needed here
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.black54),
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-              },
-            ),
-          ],
+          automaticallyImplyLeading: false 
+         
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -238,15 +208,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     );
   }
 
+  // --- UPDATED LAYOUT FOR "HOW IT WORKS" STEPS ---
   Widget _buildStep(String title, String subtitle) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(width: 8),
-          Expanded(child: Text(subtitle, style: const TextStyle(color: Colors.white70))),
+          const SizedBox(height: 4), // Add a small space between title and subtitle
+          Text(subtitle, style: const TextStyle(color: Colors.white70)),
         ],
       ),
     );

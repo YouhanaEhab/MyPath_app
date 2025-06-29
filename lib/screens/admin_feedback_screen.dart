@@ -61,8 +61,9 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            title: const Text('User Feedback', style: TextStyle(color: Colors.white)),
-            backgroundColor: Theme.of(context).primaryColor,
+            title: const Text('User Feedback Panel', style: TextStyle(color: Colors.white)),
+            centerTitle: true,
+            backgroundColor: Colors.green.shade700,
             floating: true,
             snap: true,
             iconTheme: const IconThemeData(color: Colors.white),

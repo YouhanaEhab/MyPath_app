@@ -61,7 +61,7 @@ class CareerReportScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(5.0),
             children: [
               Row(
                 children: [
@@ -71,11 +71,14 @@ class CareerReportScreen extends StatelessWidget {
                   ),
                   Expanded(
                     child: Center(
+                      child : GestureDetector(
+                        onTap: () => context.go('/home'),
                       child: Image.asset(
                         'assets/images/logo.png',
-                        height: 40,
-                        width: 120,
+                        height: 90,
+                      
                         fit: BoxFit.contain,
+                      )
                       ),
                     ),
                   ),

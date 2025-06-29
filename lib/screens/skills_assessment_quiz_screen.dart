@@ -89,8 +89,6 @@ class _SkillsAssessmentQuizScreenState extends State<SkillsAssessmentQuizScreen>
                   'answers': _answers.entries.map((e) => {'question': e.key, 'answer': e.value}).toList(),
                   'feedbackGiven': false,
                 });
-                
-                // --- FIXED NAVIGATION ---
                 if (mounted) context.go('/career-report/${newReport.id}/${Uri.encodeComponent(predictedRole)}');
               }
             } else {
@@ -124,135 +122,128 @@ class _SkillsAssessmentQuizScreenState extends State<SkillsAssessmentQuizScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => context.pop(),
+        ),
+        title: GestureDetector(
+          onTap: () => context.go('/main'),
+          child: Image.asset('assets/images/logo.png', height: 90   , fit: BoxFit.contain,),
+        ),
+        centerTitle: true,
+      ),
       body: Form(
         key: _formKey,
         autovalidateMode: AutovalidateMode.disabled,
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(24.0),
-            children: [
-              Row(
+        child: ListView(
+          padding: const EdgeInsets.all(24.0),
+          children: [
+            const Text('Skills Assessment', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const SizedBox(height: 8.0),
+            const Text('Tell us about your skills and experience to predict your career path.', style: TextStyle(fontSize: 16.0, color: Colors.grey)),
+            const SizedBox(height: 32.0),
+            ..._answers.keys.map((key) {
+              final questionText = _getQuestionText(key);
+              final options = _getOptions(key);
+              return Column(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.black),
-                    onPressed: () => context.pop(),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Image.asset('assets/images/logo.png', height: 40, width: 120, fit: BoxFit.contain),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
+                  _buildQuestion(questionText, key, options),
+                  const Divider(thickness: 0.5),
                 ],
-              ),
-              const SizedBox(height: 24.0),
-              const Text('Skills Assessment', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(height: 8.0),
-              const Text('Tell us about your skills and experience to predict your career path.', style: TextStyle(fontSize: 16.0, color: Colors.grey)),
-              const SizedBox(height: 32.0),
-              ..._answers.keys.map((key) {
-                final questionText = _getQuestionText(key);
-                final options = _getOptions(key);
-                return Column(
-                  children: [
-                    _buildQuestion(questionText, key, options),
-                    _buildDivider(),
-                  ],
-                );
-              }),
-              const SizedBox(height: 20.0),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (_allQuestionsAnswered && !_isLoading) ? _submitQuiz : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                    elevation: 5,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                      : const Text('Get My Career Prediction', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.white)),
+              );
+            }),
+            const SizedBox(height: 20.0),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (_allQuestionsAnswered && !_isLoading) ? _submitQuiz : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                  elevation: 5,
                 ),
+                child: _isLoading
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                    : const Text('Get My Career Prediction', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
-              const SizedBox(height: 10.0),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _isLoading ? null : () => context.pop(),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    side: BorderSide(color: Colors.grey.shade400, width: 1.0),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                  ),
-                  child: const Text('Back', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ),
+            const SizedBox(height: 10.0),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _isLoading ? null : () => context.pop(),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  side: BorderSide(color: Colors.grey.shade400, width: 1.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                 ),
+                child: const Text('Back', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.grey)),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildQuestion(String questionText, String answerKey, List<String> options) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16.0),
-        Text(questionText, style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Colors.black87)),
-        FormField<String>(
-          validator: (value) {
-            if (_answers[answerKey] == null) {
-              return 'Please select an option.';
-            }
-            return null;
-          },
-          builder: (FormFieldState<String> state) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: options.map((option) {
-                return RadioListTile<String>(
-                  title: Text(option),
-                  value: option,
-                  groupValue: _answers[answerKey],
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _answers[answerKey] = newValue;
-                      state.didChange(newValue);
-                    });
-                  },
-                  activeColor: Colors.green,
-                  dense: true,
-                );
-              }).toList(),
-            );
-          },
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(questionText, style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600, color: Colors.black87)),
+          const SizedBox(height: 4),
+          Row(
+            children: options.map((option) {
+              return Row(
+                children: [
+                  Radio<String>(
+                    value: option,
+                    groupValue: _answers[answerKey],
+                    onChanged: (String? newValue) => setState(() => _answers[answerKey] = newValue),
+                    activeColor: Colors.green,
+                  ),
+                  Text(option),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildDivider() => const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Divider(color: Colors.grey, thickness: 0.5));
-
-  String _getQuestionText(String key) {
-    const questions = {
-      'webdev': 'Did you do webdev during college time ?', 'data_analysis': 'Are you good at Data analysis ?', 'reading_writing_skills': 'Reading and writing skills',
-      'tech_person': 'Are you a tech person ?', 'non_tech_society': 'Were you in a non tech society ?', 'coding_good': 'Are you good at coding ?',
-      'mobile_apps_developed': 'Have you developed mobile apps ?', 'communication_good': 'Are you good at communication ?',
-      'security_specialization': 'Do you have specialization in security ?', 'handled_databases': 'Have you ever handled large databases ?',
-      'statistics_data_science': 'Do you have knowledge of statistics and data science?', 'proficient_english': 'Are you proficient in English ?',
-      'managed_event': 'Have you ever managed some event?', 'technical_blogs': 'Do you write technical blogs ?', 'marketing_into': 'Are you into marketing ?',
-      'ml_expert': 'Are you a ML expert ?', 'connections_lot': 'Do you have a lot of connections ?', 'built_live_project': 'Have you ever built live project ?',
-    };
-    return questions[key] ?? '';
-  }
+ String _getQuestionText(String key) {
+  const questions = {
+    'webdev': 'Do you have knowledge about web development (e.g., HTML, CSS, JavaScript)?',
+    'data_analysis': 'Do you know your way around data analysis?',
+    'reading_writing_skills': 'How would you describe your reading and writing abilities?',
+    'tech_person': 'Do you consider yourself a tech-savvy person?',
+    'non_tech_society': 'Were you actively involved in any non-technical clubs or societies?',
+    'coding_good': 'Are you confident in your coding and programming abilities?',
+    'mobile_apps_developed': 'Have you ever developed a mobile application (for iOS or Android)?',
+    'communication_good': 'Are youeffective at communicating your ideas to others?',
+    'security_specialization': 'Do you have any knowledge in cybersecurity?',
+    'handled_databases': 'Do you have experience managing or working with large databases?',
+    'statistics_data_science': 'Are you familiar with the principles of statistics and data science?',
+    'proficient_english': 'How proficient are you in the English language?',
+    'managed_event': 'Have you ever taken a lead role in managing an event?',
+    'technical_blogs': 'Do you enjoy writing or reading technical blogs and articles?',
+    'marketing_into': 'Are you interested in the field of marketing and advertising?',
+    'ml_expert': 'Do you have knowledge in Machine Learning (ML)?',
+    'connections_lot': 'Do you have a strong professional network or many industry connections?',
+    'built_live_project': 'Have you ever built and deployed a live project?',
+  };
+  return questions[key] ?? '';
+}
 
   List<String> _getOptions(String key) {
-    if (key == 'reading_writing_skills') {
-      return ['poor', 'medium', 'excellent'];
-    }
+    if (key == 'reading_writing_skills') return ['poor', 'medium', 'excellent'];
     return ['yes', 'no'];
   }
 }

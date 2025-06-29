@@ -20,7 +20,6 @@ class _PersonalityAssessmentScreenState extends State<PersonalityAssessmentScree
   final TextEditingController _extraversionController = TextEditingController();
   final TextEditingController _agreeablenessController = TextEditingController();
   final TextEditingController _neuroticismController = TextEditingController();
-  // --- UPDATED TEST URL ---
   final String _oceanTestUrl = 'https://bigfive-test.com/';
   final FocusNode _opennessFocus = FocusNode();
   final FocusNode _conscientiousnessFocus = FocusNode();
@@ -239,106 +238,101 @@ class _PersonalityAssessmentScreenState extends State<PersonalityAssessmentScree
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => context.pop(),
+        ),
+        title: GestureDetector(
+          onTap: () => context.go('/main'),
+          child: Image.asset('assets/images/logo.png', height: 100, fit: BoxFit.contain,),
+        ),
+        centerTitle: true,
+      ),
       body: Form(
         key: _formKey,
         autovalidateMode: AutovalidateMode.onUserInteraction,
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(24.0),
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.black),
-                    onPressed: () => context.pop(),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Image.asset('assets/images/logo.png', height: 40, width: 120, fit: BoxFit.contain),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
-              const SizedBox(height: 24.0),
-              const Text('Personality Assessment', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(height: 8.0),
-              // --- UPDATED DESCRIPTION TEXT ---
-              const Text(
-                "Enter your Big Five personality scores (0-100). If you haven't taken the test, we recommend this one:", 
-                style: TextStyle(fontSize: 16.0, color: Colors.grey)
-              ),
-              const SizedBox(height: 16.0),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  width: 180,
-                  child: OutlinedButton.icon(
-                    onPressed: _launchUrl,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-                      side: BorderSide(color: Colors.green.shade400, width: 1.0),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                      foregroundColor: Colors.green.shade700,
-                    ),
-                    icon: const Icon(Icons.link, size: 18),
-                    label: const Text('Take Personality Test', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32.0),
-              if (_collectiveValidationError != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20.0),
-                  child: Text(_collectiveValidationError!, style: const TextStyle(color: Colors.red, fontSize: 14.0, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                ),
-              _buildScoreInputField('Openness (O)', 'Enter score for Openness', _opennessController, focusNode: _opennessFocus, nextFocusNode: _conscientiousnessFocus, textInputAction: TextInputAction.next),
-              const SizedBox(height: 20.0),
-              _buildScoreInputField('Conscientiousness (C)', 'Enter score for Conscientiousness', _conscientiousnessController, focusNode: _conscientiousnessFocus, nextFocusNode: _extraversionFocus, textInputAction: TextInputAction.next),
-              const SizedBox(height: 20.0),
-              _buildScoreInputField('Extraversion (E)', 'Enter score for Extraversion', _extraversionController, focusNode: _extraversionFocus, nextFocusNode: _agreeablenessFocus, textInputAction: TextInputAction.next),
-              const SizedBox(height: 20.0),
-              _buildScoreInputField('Agreeableness (A)', 'Enter score for Agreeableness', _agreeablenessController, focusNode: _agreeablenessFocus, nextFocusNode: _neuroticismFocus, textInputAction: TextInputAction.next),
-              const SizedBox(height: 20.0),
-              _buildScoreInputField('Neuroticism (N)', 'Enter score for Neuroticism', _neuroticismController, focusNode: _neuroticismFocus, textInputAction: TextInputAction.done),
-              const SizedBox(height: 32.0),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (_allScoresFilledAndValid && !_isLoading) ? _submitScores : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                    elevation: 5,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                      : const Text('Get Personality-Based Prediction', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-              ),
-              const SizedBox(height: 10.0),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _isLoading ? null : () => context.pop(),
+        child: ListView(
+          padding: const EdgeInsets.all(24.0),
+          children: [
+            const Text('Personality Assessment', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const SizedBox(height: 8.0),
+            const Text(
+              "Enter your Big Five personality scores (0-100). If you haven't taken the test, we recommend this one:", 
+              style: TextStyle(fontSize: 16.0, color: Colors.grey)
+            ),
+            const SizedBox(height: 16.0),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: 200,
+                child: OutlinedButton.icon(
+                  onPressed: _launchUrl,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    side: BorderSide(color: Colors.grey.shade400, width: 1.0),
+                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                    side: BorderSide(color: Colors.green.shade400, width: 1.0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                    foregroundColor: Colors.green.shade700,
                   ),
-                  child: const Text('Back', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  icon: const Icon(Icons.link, size: 18),
+                  label: const Text('Take Personality Test', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold)),
                 ),
               ),
-              const SizedBox(height: 20.0),
-            ],
-          ),
+            ),
+            const SizedBox(height: 32.0),
+            if (_collectiveValidationError != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+                child: Text(_collectiveValidationError!, style: const TextStyle(color: Colors.red, fontSize: 14.0, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              ),
+            _buildScoreInputField('Openness (O)', 'Enter score for Openness', _opennessController, focusNode: _opennessFocus, nextFocusNode: _conscientiousnessFocus),
+            const SizedBox(height: 20.0),
+            _buildScoreInputField('Conscientiousness (C)', 'Enter score for Conscientiousness', _conscientiousnessController, focusNode: _conscientiousnessFocus, nextFocusNode: _extraversionFocus),
+            const SizedBox(height: 20.0),
+            _buildScoreInputField('Extraversion (E)', 'Enter score for Extraversion', _extraversionController, focusNode: _extraversionFocus, nextFocusNode: _agreeablenessFocus),
+            const SizedBox(height: 20.0),
+            _buildScoreInputField('Agreeableness (A)', 'Enter score for Agreeableness', _agreeablenessController, focusNode: _agreeablenessFocus, nextFocusNode: _neuroticismFocus),
+            const SizedBox(height: 20.0),
+            _buildScoreInputField('Neuroticism (N)', 'Enter score for Neuroticism', _neuroticismController, focusNode: _neuroticismFocus, isLast: true),
+            const SizedBox(height: 32.0),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (_allScoresFilledAndValid && !_isLoading) ? _submitScores : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                  elevation: 5,
+                ),
+                child: _isLoading
+                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                    : const Text('Get Personality-Based Prediction', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 10.0),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _isLoading ? null : () => context.pop(),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  side: BorderSide(color: Colors.grey.shade400, width: 1.0),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                ),
+                child: const Text('Back', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.grey)),
+              ),
+            ),
+            const SizedBox(height: 20.0),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildScoreInputField(String label, String hint, TextEditingController controller, {required FocusNode focusNode, FocusNode? nextFocusNode, TextInputAction? textInputAction}) {
+  Widget _buildScoreInputField(String label, String hint, TextEditingController controller, {required FocusNode focusNode, FocusNode? nextFocusNode, bool isLast = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -348,7 +342,7 @@ class _PersonalityAssessmentScreenState extends State<PersonalityAssessmentScree
           controller: controller,
           focusNode: focusNode,
           keyboardType: TextInputType.number,
-          textInputAction: textInputAction ?? TextInputAction.next,
+          textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
           decoration: InputDecoration(
             hintText: hint,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -359,14 +353,10 @@ class _PersonalityAssessmentScreenState extends State<PersonalityAssessmentScree
           validator: _scoreValidator,
           onChanged: (value) => _updateButtonState(),
           onFieldSubmitted: (_) {
-            final int? score = int.tryParse(controller.text);
-            if (score == null || score < 0 || score > 100) {
-              FocusScope.of(context).requestFocus(focusNode);
-              _showSnackBar('Please enter a valid score (0-100) before continuing.', backgroundColor: Colors.red);
-            } else if (nextFocusNode != null) {
+            if (!isLast) {
               FocusScope.of(context).requestFocus(nextFocusNode);
             } else {
-              FocusScope.of(context).unfocus();
+              _submitScores();
             }
           },
         ),
